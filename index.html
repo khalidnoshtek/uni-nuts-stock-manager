@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Stock Management — Uni Nuts India</title>
+<meta name="description" content="Warehouse stock update and audit parser for Uni Nuts India operations team"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<!-- SheetJS for Excel export -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="data.js"></script>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">🥜</div>
+      <div>
+        <div class="logo-title">Uni Nuts Stock Manager</div>
+        <div class="logo-sub">Warehouse Operations · Audit: 18.04.26</div>
+      </div>
+    </div>
+    <nav class="tab-nav">
+      <button class="tab-btn active" id="tab-parser" onclick="switchTab('parser')">
+        <span class="tab-icon">📋</span> Stock Parser
+      </button>
+      <button class="tab-btn" id="tab-entry" onclick="switchTab('entry')">
+        <span class="tab-icon">📦</span> Stock Entry
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ══════════ TAB 1: STOCK PARSER ══════════ -->
+  <section id="panel-parser" class="panel active">
+    <div class="panel-hero">
+      <h1>📋 Stock History Parser</h1>
+      <p>Paste handwritten or copied stock update text below. The system will automatically match each line to the correct product using ID and name correlation, generate a confidence score, and flag uncertain entries.</p>
+    </div>
+
+    <div class="parser-layout">
+      <!-- Input -->
+      <div class="card input-card">
+        <div class="card-header">
+          <span class="card-icon">📝</span>
+          <span>Paste Raw Stock Text</span>
+          <button class="btn-ghost" onclick="loadSample()">Load Sample</button>
+        </div>
+        <textarea id="raw-input" class="raw-textarea" placeholder="Paste your stock update text here...&#10;&#10;Examples:&#10;Almonds Regular - 25 kg&#10;100001 - 50&#10;Mamra 12 kg wakad&#10;Walnut kernel 30kg"></textarea>
+        <div class="input-actions">
+          <button class="btn-primary" onclick="parseStock()">🔍 Parse &amp; Match</button>
+          <button class="btn-secondary" onclick="clearParser()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div id="stats-bar" class="stats-bar hidden">
+        <div class="stat-pill matched"><span id="stat-matched">0</span><label>Matched</label></div>
+        <div class="stat-pill flagged"><span id="stat-flagged">0</span><label>Needs Review</label></div>
+        <div class="stat-pill unmatched"><span id="stat-unmatched">0</span><label>Unmatched</label></div>
+        <div class="stat-pill total"><span id="stat-total">0</span><label>Total Lines</label></div>
+        <button class="btn-export" onclick="exportParserExcel()">⬇ Export Excel</button>
+        <button class="btn-copy" onclick="copyReport()">📋 Copy Report</button>
+      </div>
+
+      <!-- Results Table -->
+      <div id="parser-results" class="results-wrap hidden">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">✅</span>
+            <span>Parsed Results</span>
+            <div class="filter-row">
+              <button class="filter-btn active" onclick="filterResults('all',this)">All</button>
+              <button class="filter-btn" onclick="filterResults('high',this)">✅ High Confidence</button>
+              <button class="filter-btn" onclick="filterResults('review',this)">⚠️ Review</button>
+              <button class="filter-btn" onclick="filterResults('low',this)">❌ Unmatched</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="results-table" id="results-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Raw Input</th>
+                  <th>Matched Product</th>
+                  <th>Internal Code</th>
+                  <th>QueBuster ID</th>
+                  <th>Unit</th>
+                  <th>Qty</th>
+                  <th>Confidence</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ TAB 2: STOCK ENTRY ══════════ -->
+  <section id="panel-entry" class="panel">
+    <div class="panel-hero">
+      <h1>📦 Stock Entry</h1>
+      <p>Search for a product by name or ID, enter the quantity dispatched/received, then export the daily log as Excel for sharing.</p>
+    </div>
+
+    <div class="entry-layout">
+      <!-- Search & Add -->
+      <div class="card entry-card">
+        <div class="card-header"><span class="card-icon">🔎</span><span>Find Product</span></div>
+        <div class="search-wrap">
+          <input type="text" id="product-search" class="search-input" placeholder="Search by name or product ID (e.g. Almonds, 52288, 100001)..." oninput="searchProducts()" autocomplete="off"/>
+          <div id="search-dropdown" class="search-dropdown hidden"></div>
+        </div>
+
+        <!-- Selected product display -->
+        <div id="selected-product" class="selected-product hidden">
+          <div class="sp-badge">Selected</div>
+          <div class="sp-name" id="sp-name">—</div>
+          <div class="sp-meta">
+            <span>Internal: <strong id="sp-barcode">—</strong></span>
+            <span>QueBuster: <strong id="sp-qb">—</strong></span>
+            <span>Unit: <strong id="sp-unit">—</strong></span>
+          </div>
+        </div>
+
+        <!-- Quantity + location -->
+        <div class="qty-row">
+          <div class="field">
+            <label>Quantity</label>
+            <input type="number" id="qty-input" class="qty-input" placeholder="e.g. 25" min="0" step="0.01"/>
+          </div>
+          <div class="field">
+            <label>Unit Override</label>
+            <select id="unit-override" class="unit-select">
+              <option value="">Auto</option>
+              <option value="Kg">Kg</option>
+              <option value="Pcs">Pcs</option>
+              <option value="Box">Box</option>
+              <option value="Gm">Gm</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Location</label>
+            <select id="loc-select" class="unit-select">
+              <option value="">Select location</option>
+              <option>Wakad</option><option>Spine Road</option><option>Nigdi</option>
+              <option>Sus Road</option><option>Deccan</option><option>Kothrud</option>
+              <option>Baner</option><option>Kolhapur</option><option>Sangli</option>
+              <option>Undri</option><option>Warje</option><option>Hinjewadi</option>
+              <option>Prabhat Road</option><option>Sus</option><option>Raichur Warehouse</option>
+              <option>Warehouse</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Remark</label>
+            <input type="text" id="remark-input" class="qty-input" placeholder="Optional note"/>
+          </div>
+        </div>
+        <div class="entry-actions">
+          <button class="btn-primary" onclick="addEntry()">➕ Add to List</button>
+          <button class="btn-secondary" onclick="clearSelection()">Clear</button>
+        </div>
+        <div id="entry-error" class="entry-error hidden"></div>
+      </div>
+
+      <!-- Log header + export -->
+      <div id="entry-log-header" class="log-header hidden">
+        <div class="log-meta">
+          <span id="log-count">0 entries</span>
+          <span id="log-date"></span>
+        </div>
+        <div class="log-actions">
+          <button class="btn-export" onclick="exportEntryExcel()">⬇ Export Excel</button>
+          <button class="btn-secondary small" onclick="clearLog()">🗑 Clear Log</button>
+        </div>
+      </div>
+
+      <!-- Entry log table -->
+      <div id="entry-log-wrap" class="card hidden">
+        <div class="card-header"><span class="card-icon">📄</span><span>Today's Stock Log</span></div>
+        <div class="table-scroll">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Product Name</th>
+                <th>Internal Code</th>
+                <th>QueBuster ID</th>
+                <th>Qty</th>
+                <th>Unit</th>
+                <th>Location</th>
+                <th>Remark</th>
+                <th>Time</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="entry-log-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="empty-log" class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div>No entries yet. Search and add products above.</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">Uni Nuts India LLP · Warehouse Stock Manager · Data: Audit Done On 18.04.26</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
