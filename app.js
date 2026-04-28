@@ -460,7 +460,7 @@ function exportEntryExcel() {
   if (!entryLog.length) return;
   const date = safeDate();
   const rows = [
-    ['Uni Nuts India LLP - Daily Stock Entry Log'],
+    ['Dry Fruit Hub - Daily Stock Entry Log'],
     ['Date: ' + date + '  |  Exported: ' + new Date().toLocaleString('en-IN')],
     [],
     ['#', 'Product Name', 'Internal Code', 'QueBuster ID', 'Quantity', 'Unit', 'Expected Unit', 'Unit Match', 'Location', 'Remark', 'Time']

@@ -158,7 +158,12 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--tex
 .hidden { display: none !important; }
 
 /* Footer */
-.footer { text-align: center; padding: 24px; font-size: 11px; color: var(--text3); border-top: 1px solid var(--border); margin-top: 32px; }
+.footer { text-align: center; padding: 28px 24px; font-size: 11px; color: var(--text3); border-top: 1px solid var(--border); margin-top: 32px; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.footer-main { font-size: 12px; color: var(--text2); font-weight: 500; }
+.footer-attr { font-size: 11px; color: var(--text3); }
+.footer-attr a { color: var(--accent2); text-decoration: none; font-weight: 600; transition: color .2s; }
+.footer-attr a:hover { color: var(--accent); text-decoration: underline; }
+.footer-copy { font-size: 10px; color: var(--text3); opacity: .7; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
