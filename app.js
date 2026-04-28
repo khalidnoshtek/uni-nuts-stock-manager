@@ -227,7 +227,7 @@ function exportParserExcel() {
   const rows = [['#','Raw Input','Matched Product','Internal Code','QueBuster ID','Unit','Qty','Confidence %','Status','Unit Warning']];
   parsedResults.forEach((r, i) => {
     const p = r.product;
-    const unitWarn = r.detectedUnit && p && r.detectedUnit !== p.unit ? `MISMATCH: written ${r.detectedUnit}, expected ${p.unit}` : '';
+    const unitWarn = r.detectedUnit && p && r.detectedUnit !== p.unit ? 'MISMATCH: written ' + r.detectedUnit + ', expected ' + p.unit : '';
     rows.push([
       i + 1,
       r.raw,
@@ -245,7 +245,8 @@ function exportParserExcel() {
   ws['!cols'] = [4,30,30,14,12,10,8,12,14,30].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Parsed Stock');
-  XLSX.writeFile(wb, `Stock_Parser_${today()}.xlsx`);
+  const fname = 'Stock_Parser_' + safeDate() + '.xlsx';
+  XLSX.writeFile(wb, fname, { bookType: 'xlsx' });
 }
 
 function copyReport() {
@@ -457,10 +458,10 @@ function clearLog() {
 
 function exportEntryExcel() {
   if (!entryLog.length) return;
-  const date = entryLog[0].date.replace(/\//g, '-');
+  const date = safeDate();
   const rows = [
-    ['Uni Nuts India LLP — Daily Stock Entry Log'],
-    [`Date: ${date}  |  Exported: ${new Date().toLocaleString('en-IN')}`],
+    ['Uni Nuts India LLP - Daily Stock Entry Log'],
+    ['Date: ' + date + '  |  Exported: ' + new Date().toLocaleString('en-IN')],
     [],
     ['#', 'Product Name', 'Internal Code', 'QueBuster ID', 'Quantity', 'Unit', 'Expected Unit', 'Unit Match', 'Location', 'Remark', 'Time']
   ];
@@ -484,14 +485,10 @@ function exportEntryExcel() {
   ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 10 } }];
   ws['!cols'] = [4, 32, 14, 12, 10, 10, 12, 10, 18, 22, 8].map(w => ({ wch: w }));
 
-  // Style header rows
-  ['A1','A2'].forEach(cell => {
-    if (ws[cell]) ws[cell].s = { font: { bold: true, sz: 12 }, fill: { fgColor: { rgb: '6C63FF' } }, font: { color: { rgb: 'FFFFFF' }, bold: true } };
-  });
-
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, `Stock_${date}`);
-  XLSX.writeFile(wb, `DailyStock_${date}.xlsx`);
+  XLSX.utils.book_append_sheet(wb, ws, 'DailyStock');
+  const fname = 'DailyStock_' + date + '.xlsx';
+  XLSX.writeFile(wb, fname, { bookType: 'xlsx' });
 }
 
 // ── Helpers ────────────────────────────────
@@ -502,6 +499,14 @@ function esc(str) {
 
 function today() {
   return new Date().toISOString().split('T')[0];
+}
+
+function safeDate() {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return dd + '-' + mm + '-' + yyyy;
 }
 
 // Close dropdown on outside click
